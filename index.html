@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+    <title>Greek Scholar Diaspora Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+            padding-bottom: 80px; /* 调整下内边距以避免与固定元素重叠 */
+        }
+        h1#main-title {
+            font-family: 'Great Vibes', cursive;
+            font-size: 6em;
+            color: #ffbb00cc;
+            text-align: center;
+            padding: 40px 0;
+            margin: 100px 80px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            letter-spacing: 2px;
+        }
+        .thumbnails {
+            display: flex;
+            justify-content: space-around;
+            margin: 0 20px 40px 20px;
+        }
+        .thumbnails .thumbnail {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .thumbnails img {
+            height: 300px;
+            width: auto;
+            transition: all 0.3s ease;
+        }
+        .thumbnails img:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .thumbnails p {
+            font-size: 14px;
+            color: #ddd;
+            margin-top: 10px;
+        }
+        .next-chart {
+            position: fixed; /* 设置为固定位置 */
+            bottom: 20px; /* 将距离底部的外边距增加到20像素 */
+            left: 20px; /* 左侧外边距 */
+            right: 20px; /* 右侧外边距 */
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #adadad;
+            border-radius: 5px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .next-chart a {
+            font-size: 18px;
+            text-decoration: none;
+            color: #8e8f90;
+            padding: 5px 10px;
+        }
+        .next-chart a:hover {
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="main-title">Greek Scholar Diaspora Analysis</h1>
+    <div class="thumbnails">
+        <div class="thumbnail">
+            <img src="1.png" alt="图表 1">
+            <p>图表 1 说明</p>
+        </div>
+        <div class="thumbnail">
+            <img src="2.png" alt="图表 2">
+            <p>图表 2 说明</p>
+        </div>
+        <div class="thumbnail">
+            <img src="3.png" alt="图表 3">
+            <p>图表 3 说明</p>
+        </div>
+    </div>
+    <div class="next-chart">
+        <a href="1_worldmap.html">下一个图表 ➡</a>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hierarchical Layout</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000000;
+            /* 黑色背景 */
+            margin: 0;
+            overflow: hidden;
+            /* 防止页面溢出 */
+            padding-bottom: 60px;
+        }
+
+        .title {
+            font-family: 'Great Vibes', cursive;
+            font-size: 4em;
+            /* 调整字体大小 */
+            color: #ffbb00cc;
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            /* 添加文字阴影 */
+            letter-spacing: 2px;
+            /* 调整字母间距 */
+            /* 占满宽度 */
+            background-color: #000000;
+            /* 黑色背景 */
+            z-index: 1000;
+            /* 置于其他内容之上 */
+        }
+        .next-chart {
+            position: fixed;
+            bottom: 20px; /* 距离底部的外边距 */
+            left: 20px; /* 左侧外边距 */
+            right: 20px; /* 右侧外边距 */
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #adadad;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between; /* 分布在容器的两端 */
+            align-items: center; /* 垂直居中 */
+        }
+        .next-chart a, #toggle-btn {
+            font-size: 18px;
+            text-decoration: none;
+            color: #8e8f90;
+            padding: 5px 10px;
+        }
+        #chart-container {
+            position: absolute;
+            top: 120px;
+            /* 与标题下方对齐 */
+            left: 0;
+            width: 100%;
+            height: calc(100% - 120px);
+            /* 减去标题高度 */
+            overflow-y: scroll;
+            /* 允许垂直滚动 */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title">Academic Impact of Greek Scholars: Fields, Countries, Institutions</div>
+    <div id="chart-container"></div>
+    <div class="next-chart">
+        <a href="2_violin.html">⬅ 上一个图表</a>
+        <a href="4_end.html">结语 ➡</a>
+    </div>
+    <script>
+        // const width = 928;
+        // const height = width;
+        const container = document.getElementById("chart-container");
+        // const height = window.innerHeight;
+        // const width = height;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        // Load the hierarchical data from JSON file
+        d3.json('hierarchical_data_field_corrected_cleaned.json').then(data => {
+            // Create the color scale. You may adjust the domain and range according to your data.
+            const color = d3.scaleLinear()
+                .domain([0, 3]) // Adjust domain according to the depth of your hierarchy
+                .range(["#dec472", "#afafaf"])
+                .interpolate(d3.interpolateHcl);
+
+            // Compute the layout.
+            const pack = data => d3.pack()
+                .size([width, height])
+                .padding(3)
+                (d3.hierarchy(data)
+                    .sum(d => d.value)
+                    .sort((a, b) => b.value - a.value));
+
+            const root = pack(data);
+
+            // Create the SVG container.
+            const svg = d3.create("svg")
+                .attr("viewBox", `-${width / 2} -${height / 2} ${width} ${height}`)
+                .attr("width", width)
+                .attr("height", height)
+                // .attr("style", `max-width: 100%; height: auto; display: block; margin: 0 -14px; background: ${color(0)}; cursor: pointer;`);
+                .attr("style", `max-width: 100%; height: auto; display: block; margin: 0 -14px; background: #000000; cursor: pointer;`); // 黑色背景
+
+            // Append the nodes.
+            const node = svg.append("g")
+                .selectAll("circle")
+                .data(root.descendants().slice(1))
+                .join("circle")
+                .attr("fill", d => d.children ? color(d.depth) : "white")
+                .attr("pointer-events", d => !d.children ? "none" : null)
+                .on("mouseover", function () { d3.select(this).attr("stroke", "#000"); })
+                .on("mouseout", function () { d3.select(this).attr("stroke", null); })
+                .on("click", (event, d) => focus !== d && (zoom(event, d), event.stopPropagation()));
+
+            // Append the text labels.
+            const TOP_ORGANIZATIONS = 10; // Set the number of organizations to display
+            const label = svg.append("g")
+                .style("font", "10px sans-serif")
+                // .style("fill", "#FFD700") // 金色文本
+                .attr("pointer-events", "none")
+                .attr("text-anchor", "middle")
+                .selectAll("text")
+                .data(root.descendants())
+                .join("text")
+                .style("fill-opacity", d => d.depth === 1 ? 1 : 0)
+                .style("display", d => d.depth === 1 ? "inline" : "none")
+                .text(d => d.data.name);
+
+
+
+
+
+
+            // Create the zoom behavior and zoom immediately in to the initial focus node.
+            svg.on("click", (event) => zoom(event, root));
+            let focus = root;
+            console.log(focus);
+            // let view;
+            let view = [focus.x, focus.y, focus.r * 2]; // Initialize the view to the root node
+
+            // Create the zoom behavior and zoom immediately in to the initial focus node.
+            zoomTo(view);
+            svg.on("click", (event) => zoom(event, root));
+            function zoomTo(v) {
+                const k = height / v[2];
+                view = v;
+                label.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
+                node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
+                node.attr("r", d => d.r * k);
+            }
+
+            function zoom(event, d) {
+                const focus0 = focus;
+                focus = d;
+
+                // Initialize view if undefined
+                if (!view) {
+                    view = [focus.x, focus.y, focus.r * 2];
+                }
+
+                const transition = svg.transition()
+                    .duration(event.altKey ? 7500 : 750)
+                    .tween("zoom", d => {
+                        const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+                        return t => zoomTo(i(t));
+                    });
+
+                label
+                    .transition(transition)
+                    .style("fill-opacity", d => {
+                        if (focus.depth === 0 && d.depth === 1) return 1; // 显示学科
+                        if (focus.depth === 1 && d.depth === 2) return 1; // 显示国家
+                        if (focus.depth === 2 && d.depth === 3) { // 显示前十名机构
+                            const institutions = focus.children.sort((a, b) => b.value - a.value).slice(0, TOP_ORGANIZATIONS);
+                            return institutions.includes(d) ? 1 : 0;
+                        }
+                        return 0; // 其他情况下隐藏标签
+                    })
+                    .style("display", function (d) {
+                        if (focus.depth === 0 && d.depth === 1) return "inline";
+                        if (focus.depth === 1 && d.depth === 2) return "inline";
+                        if (focus.depth === 2 && d.depth === 3) {
+                            const institutions = focus.children.sort((a, b) => b.value - a.value).slice(0, TOP_ORGANIZATIONS);
+                            return institutions.includes(d) ? "inline" : "none";
+                        }
+                        return "none";
+                    });
+            }
+
+            // Append the SVG to the body of the page
+            // document.body.appendChild(svg.node());
+            container.appendChild(svg.node());
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Spinning globe with country scholars distribution in D3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background: black;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: 60px;
+        }
+
+        svg {
+            margin-left: -200px;
+            /* 水平居中 */
+        }
+
+        p {
+            margin-top: 1.2em;
+            margin-bottom: 0.3em;
+            font: 1em Muli;
+            color: #BBB;
+        }
+
+        #country-info {
+            position: absolute;
+            color: white;
+            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        #main-title {
+            font-family: 'Great Vibes', cursive;
+            font-size: 4em;
+            /* 调整字体大小 */
+            color: #ffbb00cc;
+            text-align: center;
+            padding: 0px 0;
+            margin-bottom: 0px;
+            margin-top: 0px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            /* 添加文字阴影 */
+            letter-spacing: 2px;
+            /* 调整字母间距 */
+        }
+        .next-chart {
+            position: fixed;
+            bottom: 20px; /* 距离底部的外边距 */
+            left: 20px; /* 左侧外边距 */
+            right: 20px; /* 右侧外边距 */
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #adadad;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between; /* 分布在容器的两端 */
+            align-items: center; /* 垂直居中 */
+        }
+        .next-chart a, #toggle-btn {
+            font-size: 18px;
+            text-decoration: none;
+            color: #8e8f90;
+            padding: 5px 10px;
+        }
+        .next-chart a:hover, #toggle-btn:hover {
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 5px;
+        }
+        #toggle-btn {
+            background-color: #ffbb00cc;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+
+        }
+
+        #toggle-btn:hover {
+            background-color: #ffcc66cc;
+            transform: scale(1.05);
+        }
+
+        #toggle-btn:active {
+            transform: scale(1);
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="main-title">Global Distribution of Greek Scholars</h1>
+    <!-- <button id="toggle-btn">论文数量</button> -->
+
+    <svg width="820" height="620"></svg>
+    <div id="country-info"></div>
+    <div class="next-chart">
+        <a href="index.html">⬅ 返回</a>
+        <button id="toggle-btn">切换数据</button>
+        <a href="2_violin.html">下一个图表 ➡</a>
+    </div>
+    <script>
+        var showPapers = false;
+        // Map configuration
+        var width = 820;
+        var height = 620;
+
+        // Configuration for the spinning effect
+        var time = Date.now();
+        var rotate = [20, -20]; // Adjust the rotation angles for tilting
+        var velocity = [.015, -0];
+        var spinning = true; // Flag to control spinning
+
+        // set projection type and parameters
+        var projection = d3.geo.orthographic()
+            .scale(300)
+            .translate([(width / 2) + 100, height / 2])
+            .clipAngle(90)
+            .precision(0.3);
+
+        // create path variable, empty svg element and group container
+        var path = d3.geo.path()
+            .projection(projection);
+        var svg = d3.select("svg");
+        var g = svg.append("g");
+
+        // drawing dark grey sphere as landmass
+        g.append("path")
+            .datum({ type: "Sphere" })
+            .attr("class", "sphere")
+            .attr("d", path)
+            .attr("fill", "#0D0D0D");
+
+        // loading country locations from geoJSON
+        d3.json("merged_data.geojson", function (error, data) {
+            if (error) { return error; }
+            console.log(data);
+            // Extract scholars counts
+            var maxCount = d3.max(data.features, function (d) { return d.properties.Count; });
+            var colorScaleCount = d3.scale.linear()
+                .domain([1, Math.log(maxCount)]) // Domain based on 25th and 75th percentiles
+                .range(["#000000", "#ffba00"]);
+            var maxNp = d3.max(data.features, function (d) { return d.properties.np6019; });
+            var colorScalePaper = d3.scale.linear()
+                .domain([1, Math.log(maxCount)]) // Domain based on 25th and 75th percentiles
+                .range(["#000000", "#c8c896"]);
+            // 在加载国家位置的部分添加鼠标事件监听器
+            var countries = g.selectAll("path.countries").data(data.features)
+                .enter().append("path")
+                .attr("class", "countries")
+                .attr("d", path)
+                .attr("fill", function (d) {
+                    return showPapers
+                        ? colorScalePaper(Math.log(d.properties.np6019 + 1))
+                        : colorScaleCount(Math.log(d.properties.Count + 1));
+                })
+                .on("mousemove", function (d) {
+                    // Stop spinning
+                    if (spinning) {
+                        pauseTime = Date.now();
+                        spinning = false;
+                        savedTime = pauseTime - time; // Store the rotation position
+                    }
+                    pauseTime = Date.now();
+                    // Get mouse coordinates
+                    var mouseCoords = d3.mouse(this);
+
+                    // Display country information
+                    var countryInfo = "Country: " + d.properties.name + "<br>" +
+                        "ISO Code: " + d.properties.Country + "<br>" +
+                        // "Count: " + d.properties.Count + "<br>" +
+                        (showPapers ? "Papers: " + d.properties.np6019 : "Count: " + d.properties.Count + "<br>" + "Average Score: " + d.properties.Mean.toFixed(2))
+                        ;
+                    d3.select("#country-info").style("left", (mouseCoords[0] + 10) + "px")
+                        .style("top", (mouseCoords[1] - 10) + "px")
+                        .style("display", "block")
+                        .html(countryInfo);
+                })
+                .on("mouseout", function () {
+                    // Start spinning again
+                    spinning = true;
+                    time = Date.now() - savedTime;
+                    // Hide country information
+                    d3.select("#country-info").style("display", "none");
+                });
+            d3.select("#toggle-btn").on("click", function () {
+                showPapers = !showPapers; // 切换显示模式
+                this.textContent = showPapers ? "人数" : "论文数量"; // 更新按钮文本
+
+                // 更新地图上的颜色填充
+                d3.selectAll(".countries")
+                    .transition()
+                    .attr("fill", function (d) {
+                        return showPapers
+                            ? colorScalePaper(Math.log(d.properties.np6019 + 1))
+                            : colorScaleCount(Math.log(d.properties.Count + 1));
+                    });
+            });
+            var pauseTime;
+            var savedTime;
+
+
+            // Add grey-colored meridians and parallels
+            g.append("path")
+                .datum(d3.geo.graticule())
+                .attr("class", "graticule")
+                .attr("d", path)
+                .style("fill", "none")
+                .style("stroke", "#999")
+                .style("stroke-width", 0.5);
+
+            // start spinning!
+            spinning_globe();
+        });
+
+        function spinning_globe() {
+            d3.timer(function () {
+                if (spinning) {
+                    var dt = Date.now() - time;
+                    projection.rotate([rotate[0] + velocity[0] * dt, rotate[1] + velocity[1] * dt]);
+                    svg.selectAll("path.countries, .graticule").attr("d", path);
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

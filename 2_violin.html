@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        background-color: black;
+        color: #E6B800;
+        /* 金色字体 */
+        padding-bottom: 60px;
+    }
+
+    label {
+        color: #E6B800;
+        /* 金色标签 */
+    }
+
+    .next-chart {
+        position: fixed;
+        bottom: 20px;
+        /* 距离底部的外边距 */
+        left: 20px;
+        /* 左侧外边距 */
+        right: 20px;
+        /* 右侧外边距 */
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid #adadad;
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-between;
+        /* 使元素分布在容器的两端 */
+        align-items: center;
+        /* 垂直居中 */
+    }
+
+    .next-chart a,
+    #level-select {
+        font-size: 18px;
+        text-decoration: none;
+        color: #8e8f90;
+        padding: 5px 10px;
+    }
+
+    .next-chart a:hover {
+        background: rgba(0, 123, 255, 0.1);
+        border-radius: 5px;
+    }
+
+    #level-select {
+        background-color: #333333;
+        border: 1px solid #E6B800;
+        /* 其他样式 */
+        color: #E6B800;
+        /* 金色选项文本 */
+    }
+
+    #current-category {
+        font-size: 18px;
+        color: #8e8f90;
+        padding: 5px 10px;
+        display: inline-block;
+        /* 或您可以选择其他适当的显示方式 */
+    }
+
+    #my_dataviz {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .tooltip {
+        position: absolute;
+        background-color: black;
+        border: 2px solid #E6B800;
+        /* 金色边框 */
+        border-radius: 5px;
+        padding: 10px;
+        color: hsl(51, 90%, 59%);
+        /* 金色文字 */
+        visibility: hidden;
+    }
+
+    #main-title {
+        font-family: 'Great Vibes', cursive;
+        font-size: 4em;
+        /* 调整字体大小 */
+        color: #ffbb00cc;
+        text-align: center;
+        padding: 20px 0;
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        /* 添加文字阴影 */
+        letter-spacing: 2px;
+        /* 调整字母间距 */
+    }
+</style>
+<h1 id="main-title">Greek Academic Talent: Stay vs. Outflow</h1>
+<div class="next-chart">
+    <a href="1_worldmap.html">⬅ 上一个图表</a>
+    <label for="level-select">选择学科层次:</label>
+    <select id="level-select">
+        <option value="category">大类别</option>
+        <option value="sm-field">次级领域</option>
+        <option value="sm-subfield">更细分领域</option>
+    </select>
+    <span id="current-category"></span>
+    <a href="3_bubble.html">下一个图表 ➡</a>
+</div>
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.js"></script>
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
+
+<script>
+    // 存储当前选择的层次和类别
+    var currentLevel = "category";
+    var currentCategory = null;
+
+    // 更新图表的函数
+    function updateChart(selectedLevel, selectedCategory) {
+
+        // 清除现有的SVG内容
+        d3.select("#my_dataviz").select("svg").remove();
+        if (selectedCategory) {
+            var tag;
+            if (selectedLevel == "sm-field") {
+                tag = "学科大类";
+            }
+            else if (selectedLevel == "sm-subfield") {
+                tag = "学科";
+            }
+            d3.select("#current-category").text("当前查看的" + tag + "是：" + selectedCategory);
+        } else {
+            d3.select("#current-category").text(""); // 清空内容
+        }
+
+        // 创建工具提示 div
+        var tooltip = d3.select("body")
+            .append("div")
+            .style("position", "absolute")
+            .style("background-color", "white")
+            .style("border", "solid")
+            .style("border-width", "1px")
+            .style("border-radius", "5px")
+            .style("padding", "10px")
+            .style("visibility", "hidden");
+
+        // 读取数据并计算统计信息
+        d3.csv("scholars_distribution.csv", function (data) {
+            if (selectedCategory) {
+                console.log(selectedLevel);
+                console.log(selectedCategory);
+                console.log(data);
+                if (selectedLevel == "sm-field") {
+                    data = data.filter(d => d["category"] === selectedCategory);
+                }
+                else if (selectedLevel == "sm-subfield") {
+                    data = data.filter(d => d["sm-field"] === selectedCategory);
+                }
+                //   data = data.filter(d => d["category"] === selectedCategory);
+                console.log(data);
+            }
+
+            // 计算所选层次的科目数
+            var numSubjects = data.map(d => d[selectedLevel]).filter((v, i, a) => a.indexOf(v) === i).length;
+
+            // 动态设置每个小提琴图的高度和总图表高度
+            var violinHeight = 120; // 调整这个数字来控制每个小提琴图的高度
+            var height = violinHeight * numSubjects;
+
+            // 减小边距
+            var margin = { top: 20, right: 50, bottom: 20, left: 300 }; // 您可以根据需要调整这些数字
+            var width = 1200 - margin.left - margin.right;
+            var tooltip = d3.select("body")
+                .append("div")
+                .style("position", "absolute")
+                .style("background-color", "black")
+                .style("border", "2px solid #E6B800") // 金色边框
+                .style("border-radius", "5px")
+                .style("padding", "10px")
+                .style("color", "#E6B800") // 金色文字
+                .style("visibility", "hidden");
+            // 创建 SVG 元素
+            var svg = d3.select("#my_dataviz")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom) // 使用动态计算的高度
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            // 添加一个透明的矩形用于捕获SVG容器的点击事件
+            svg.append("rect")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "transparent")
+                .on("click", function () {
+                    // 获取当前在"level-select"选择框中选择的层次
+                    var selectedLevelFromDropdown = d3.select("#level-select").property("value");
+
+                    // 重置当前类别
+                    currentCategory = null;
+                    // 更新图表以显示选择的层次
+                    updateChart(selectedLevelFromDropdown, currentCategory);
+                });
+            // X 轴比例尺
+            var x = d3.scaleLinear()
+                .domain([d3.min(data, d => +d['composite-score']), d3.max(data, d => +d['composite-score'])])
+                .range([0, width]);
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .attr("class", "x-axis")
+                .call(d3.axisBottom(x))
+                .selectAll("path, line") // 选择所有路径和线条
+                .attr("stroke", "#E6B800"); // 金色X轴
+            svg.select(".x-axis")
+                .selectAll("text")
+                .attr("fill", "#E6B800");
+            // Y 轴比例尺，使用所选的学科层次
+            var y = d3.scaleBand()
+                .range([0, height])
+                .domain(data.map(d => d[selectedLevel]).filter((v, i, a) => a.indexOf(v) === i)) // 使用所选的学科层次
+                .padding(0.05);
+            svg.append("g")
+                .attr("class", "y-axis")
+                .call(d3.axisLeft(y))
+                .selectAll("path, line") // 选择所有路径和线条
+                .attr("stroke", "#E6B800"); // 金色Y轴
+
+
+            svg.select(".y-axis")
+                .selectAll("text")
+                .attr("fill", "#E6B800");
+            // 特征密度估计
+            var kde = kernelDensityEstimator(kernelEpanechnikov(0.1), x.ticks(40));
+            var sumstat = d3.nest()
+                .key(function (d) { return d[selectedLevel]; }) // 使用所选的学科层次
+                .key(function (d) { return d.cntry === 'grc' ? 'Greece' : 'Other'; }) // 区分希腊和其他国家
+                .rollup(function (d) {
+                    var input = d.map(function (g) { return +g['composite-score']; });
+                    var density = kde(input);
+                    return { density: density, count: d.length }; // 返回密度和计数
+                })
+                .entries(data);
+            // 对 sumstat 按照每个类别的总数量进行降序排序
+            sumstat.sort(function (a, b) {
+                var countA = d3.sum(a.values, function (d) { return d.value.count; });
+                var countB = d3.sum(b.values, function (d) { return d.value.count; });
+                return countB - countA;
+            });
+
+            // 计算小提琴的最大高度和最大对数数量
+            var maxNum = 0;
+            var maxLogCount = 0;
+            sumstat.forEach(function (d) {
+                d.values.forEach(function (e) {
+                    // var allBins = e.value.density;
+                    // var kdeValues = allBins.map(function(a) { return a[1]; });
+                    // var biggest = d3.max(kdeValues);
+                    // if (biggest > maxNum) { maxNum = biggest; }
+                    var logCount = Math.log(e.value.count + 1);
+                    if (logCount > maxLogCount) { maxLogCount = logCount; }
+                    if (e.value.count > maxNum) maxNum = e.value.count;
+                });
+            });
+            console.log(maxNum, maxLogCount);
+            var yNum = d3.scaleLinear()
+                .domain([-1, 1])
+                .range([-violinHeight / 2, violinHeight / 2]); // 根据小提琴图的高度调整范围
+
+
+            svg.selectAll("myViolin")
+                .data(sumstat)
+                .enter()
+                .append("g")
+                .attr("transform", function (d) { return ("translate(0," + (y(d.key) + violinHeight / 2) + ")"); })
+                .each(function (d) {
+                    var category = d.key; // 学科名称
+                    console.log(d);
+                    // 计算该类别的数值总和
+                    var totalValue = d3.sum(d.values, function (e) { return e.value.count; });
+
+                    // 如果总和为0，则直接返回，不渲染该类别的小提琴图
+                    if (totalValue === 0) return;
+                    d3.select(this)
+                        .selectAll("path")
+                        .data(d.values)
+                        .enter()
+                        .append("path")
+                        .attr("d", function (d) {
+                            console.log(category);
+                            console.log(Math.log(d.value.count + 1) / maxLogCount);
+                            //   console.log("d"+d.key);
+                            // 使用yNum比例尺调整宽度
+                            return d3.area()
+                                // .y0(function(k) { return d.key === 'Greece' ? yNum(-k[1])*Math.log(d.value.count+1)/maxLogCount : yNum(0); }) // 上方表示希腊
+                                // .y1(function(k) { return d.key === 'Greece' ? yNum(0) : yNum(k[1])*Math.log(d.value.count+1)/maxLogCount; })  // 下方表示其他国家
+                                .y0(function (k) { return d.key === 'Greece' ? yNum(-k[1]) * Math.sqrt(d.value.count) / Math.sqrt(maxNum) : yNum(0); }) // 上方表示希腊
+                                .y1(function (k) { return d.key === 'Greece' ? yNum(0) : yNum(k[1]) * Math.sqrt(d.value.count) / Math.sqrt(maxNum); })  // 下方表示其他国家
+                                .x(function (k) { return x(k[0]); })
+                                .curve(d3.curveCatmullRom)(d.value.density);
+                        })
+                        .style("stroke", "none")
+                        .style("fill", function (d) { return d.key === 'Greece' ? "#ffd06f" : "#af9366"; })
+                        // 鼠标悬停事件
+                        .on("mouseover", function (d) {
+                            tooltip.style("visibility", "visible");
+                            tooltip.html("学科: " + category + "<br>人群: " + (d.key === 'Greece' ? "希腊" : "其他国家") + "<br>数量: " + d.value.count);
+                        })
+                        .on("mousemove", function () {
+                            tooltip.style("top", (d3.event.pageY - 10) + "px")
+                                .style("left", (d3.event.pageX + 10) + "px");
+                        })
+                        .on("mouseout", function () {
+                            tooltip.style("visibility", "hidden");
+                        })
+                        .on("click", function () {
+                            tooltip.style("visibility", "hidden");
+
+                            // 如果当前层次是最细分的层次，则不做任何事情
+                            if (selectedLevel === "sm-subfield") return;
+
+                            // 更新当前类别
+                            currentCategory = category;
+
+                            // 确定下一级分类
+                            switch (selectedLevel) {
+                                case "category":
+                                    currentLevel = "sm-field";
+                                    break;
+                                case "sm-field":
+                                    currentLevel = "sm-subfield";
+                                    break;
+                            }
+
+                            // 更新图表以显示当前类别下的子领域的小提琴图
+                            updateChart(currentLevel, currentCategory);
+                        });
+                });
+        });
+    }
+
+    // 初始调用updateChart函数，显示大类别
+    updateChart(currentLevel, currentCategory);
+    // 获取包装元素
+    var wrapper = document.getElementById("my_dataviz");
+
+    // 添加点击事件监听器
+    wrapper.addEventListener("click", function (e) {
+        // 检查点击的是否是包装元素本身，而不是其子元素
+        if (e.target === wrapper) {
+            // 在此处添加返回上一级的逻辑
+            switch (currentLevel) {
+                case "sm-subfield":
+                    currentLevel = "sm-field";
+                    break;
+                case "sm-field":
+                    currentLevel = "category";
+                    break;
+            }
+            // 重置当前类别
+            currentCategory = null;
+            // 更新图表以显示上一级
+            updateChart(currentLevel, currentCategory);
+        }
+    });
+    d3.select("#level-select").on("change", function () {
+        currentLevel = d3.select(this).property("value");
+        // 重置当前类别
+        currentCategory = null;
+        updateChart(currentLevel, currentCategory);
+    });
+
+    // 2 个用于核密度估计的函数
+    function kernelDensityEstimator(kernel, X) {
+        return function (V) {
+            return X.map(function (x) {
+                return [x, d3.mean(V, function (v) { return kernel(x - v); })];
+            });
+        };
+    }
+    function kernelEpanechnikov(k) {
+        return function (v) {
+            return Math.abs(v /= k) <= 1 ? 0.75 * (1 - v * v) / k : 0;
+        };
+    }
+</script>
