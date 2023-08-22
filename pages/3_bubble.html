@@ -84,7 +84,7 @@
         const width = container.clientWidth;
         const height = container.clientHeight;
         // Load the hierarchical data from JSON file
-        d3.json('hierarchical_data_field_corrected_cleaned.json').then(data => {
+        d3.json('../data/hierarchical_data_field_corrected_cleaned.json').then(data => {
             // Create the color scale. You may adjust the domain and range according to your data.
             const color = d3.scaleLinear()
                 .domain([0, 3]) // Adjust domain according to the depth of your hierarchy

@@ -111,7 +111,7 @@
     <svg width="820" height="620"></svg>
     <div id="country-info"></div>
     <div class="next-chart">
-        <a href="index.html">⬅ 返回</a>
+        <a href="../index.html">⬅ 返回</a>
         <button id="toggle-btn">切换数据</button>
         <a href="2_violin.html">下一个图表 ➡</a>
     </div>
@@ -148,7 +148,7 @@
             .attr("fill", "#0D0D0D");
 
         // loading country locations from geoJSON
-        d3.json("merged_data.geojson", function (error, data) {
+        d3.json("../data/merged_data.geojson", function (error, data) {
             if (error) { return error; }
             console.log(data);
             // Extract scholars counts
