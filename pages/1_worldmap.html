@@ -201,7 +201,7 @@
                 });
             d3.select("#toggle-btn").on("click", function () {
                 showPapers = !showPapers; // 切换显示模式
-                this.textContent = showPapers ? "人数" : "论文数量"; // 更新按钮文本
+                this.textContent = showPapers ? "论文数量" : "人数"; // 更新按钮文本
 
                 // 更新地图上的颜色填充
                 d3.selectAll(".countries")
